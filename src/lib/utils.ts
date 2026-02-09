@@ -30,14 +30,27 @@ export function getImageProxyUrl(): string | null {
 
 /**
  * 处理图片 URL，如果设置了图片代理则使用代理
+ * 对于豆瓣图片，如果没有配置代理，自动使用内置的 /api/image-proxy 代理
  */
 export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
-  const proxyUrl = getImageProxyUrl();
-  if (!proxyUrl) return originalUrl;
+  // 检查是否是豆瓣图片
+  const isDoubanImage = originalUrl.includes('doubanio.com') || originalUrl.includes('douban.com');
 
-  return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+  // 如果配置了图片代理，使用配置的代理
+  const proxyUrl = getImageProxyUrl();
+  if (proxyUrl) {
+    return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
+  }
+
+  // 如果没有配置代理，但图片是豆瓣的，使用内置的图片代理
+  if (isDoubanImage) {
+    return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+  }
+
+  // 其他情况直接返回原 URL
+  return originalUrl;
 }
 
 /**
@@ -159,14 +172,14 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
               width >= 3840
                 ? '4K' // 4K: 3840x2160
                 : width >= 2560
-                ? '2K' // 2K: 2560x1440
-                : width >= 1920
-                ? '1080p' // 1080p: 1920x1080
-                : width >= 1280
-                ? '720p' // 720p: 1280x720
-                : width >= 854
-                ? '480p'
-                : 'SD'; // 480p: 854x480
+                  ? '2K' // 2K: 2560x1440
+                  : width >= 1920
+                    ? '1080p' // 1080p: 1920x1080
+                    : width >= 1280
+                      ? '720p' // 720p: 1280x720
+                      : width >= 854
+                        ? '480p'
+                        : 'SD'; // 480p: 854x480
 
             resolve({
               quality,
@@ -239,8 +252,7 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
     });
   } catch (error) {
     throw new Error(
-      `Error getting video resolution: ${
-        error instanceof Error ? error.message : String(error)
+      `Error getting video resolution: ${error instanceof Error ? error.message : String(error)
       }`
     );
   }
